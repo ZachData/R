@@ -1,0 +1,77 @@
+```{r}
+knitr::opts_chunk$set(fig.show = "hold")
+my_data <- read.csv("C:\\Users\\WeeSnaw\\Desktop\\Apres\\NYPD_Shooting_Incident_Data__Historic_.csv")
+#install.packages("ggplot2")
+library(ggplot2)
+data <- na.omit(my_data)
+head(data)
+
+# Here, we analyze the 'NYPD_Shooting_Incident_Data' dataset. It contains basic numerical and categorical data involving information including the sex, race, and age of both perpetrators and victims.
+
+# Our question of interest is the relationship between race and shootings, which we will primaraliy be analyzing via confusion matrices. This will allow us to do basic exploratory data analysis and seek to uncover deeper relationships within this dataset.
+
+# create confusion matrix
+time_encoded <- ifelse(as.POSIXct(data$OCCUR_TIME, format="%H:%M:%S") < as.POSIXct("16:00:00", format="%H:%M:%S"), 0, 1)
+race_encoded <- ifelse(data$VIC_RACE == "BLACK", 1, 0)
+df <- data.frame(time_encoded, race_encoded)
+conf_mat <- table(df$time_encoded, df$race_encoded)
+
+
+# make data plot
+print(ggplot(data = as.data.frame.table(conf_mat)) +
+  geom_tile(aes(Var1, Var2, fill = Freq)) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  geom_text(aes(Var1, Var2, label = Freq)) +
+  labs(x = "Time", y = "Race", fill = "Occurances") +
+  scale_x_discrete(name = "Time", labels = c("Day", "Night")) +
+  scale_y_discrete(name = "Race", labels = c("Non-Black", "Black")) +
+  theme_minimal())
+
+# For the first figure, we see that Black individuals are more likely than non-Black individuals to be victims of shootings. However, the split between day and night (defined as the break 16:00 hours) is not as significant. This could be an artifact of when reports are made, and it could also hint that whether it is day or night is not a significant factor within this dataset. 
+
+
+# create second confusion matrix
+murd_encoded <- ifelse(data$STATISTICAL_MURDER_FLAG == "true", 1, 0)
+race_encoded <- ifelse(data$VIC_RACE == "BLACK", 1, 0)
+subset_data <- na.omit(data.frame(murd_encoded, race_encoded))
+df <- data.frame(murd_encoded = subset_data$murd_encoded, race_encoded = subset_data$race_encoded)
+idx <- which(!is.na(murd_encoded) & !is.na(race_encoded))
+murd_encoded <- murd_encoded[idx]
+race_encoded <- race_encoded[idx]
+conf_mat_2 <- table(df$race_encoded, df$murd_encoded)
+
+# make murder data plot
+ggplot(data = as.data.frame.table(conf_mat_2)) +
+  geom_tile(aes(Var1, Var2, fill = Freq)) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  geom_text(aes(Var1, Var2, label = Freq)) +
+  labs(x = "Murderer", y = "Race", fill = "Occurances") +
+  scale_y_discrete(name = "murd", labels = c("Death", "No Death")) +
+  scale_x_discrete(name = "Race", labels = c("Non-Black", "Black")) +
+  theme_minimal()
+
+# For the second figure, we see the relationship between Black and non-Black individuals and whether or not they were statistically murdered. We see clear evidence of Black people being killed at a great rate as well as Black people having a higher probability of becoming statistically murdered if they are a victim of a shooting.
+
+#create model
+age_to_int <- function(age_group) {
+  ifelse(age_group == ">18", 1,
+         ifelse(age_group == "18-24", 2,
+                ifelse(age_group == "25-44", 3,
+                       ifelse(age_group == "45-64", 4, 5))))
+}
+data$PERP_AGE_GROUP_INT <- age_to_int(data$PERP_AGE_GROUP)
+data$VIC_AGE_GROUP_INT <- age_to_int(data$VIC_AGE_GROUP)
+model <- lm(VIC_AGE_GROUP_INT ~ PERP_AGE_GROUP_INT, data = data)
+summary(model)
+
+# For the model, we see the results of a linear regression model that predicts the victim's age group based on the perpetrator's age group. The coefficients estimate the average difference in the victim's age group for each one-unit increase in the perpetrator's age group.
+
+# In conclusion, race appears to play a role in shootings. Individuals who are Black are much more satistically likely to be both victims of shootings and (statistically) die because of them. Age and the difference of day/night do not appear to be useful. More information and analysis would be needed to have a deeper understanding of the information at hand.
+
+```
+
+This dataset could be biased because we only see what is reported, not the actual events which occurred.
+
+Additionally, there may be other types of bias in the data, such as under-reporting or over-reporting of certain demographic groups. For example, if certain races or ethnicities are less likely to report incidents of police shootings, the data may not accurately reflect the true frequency or distribution of such incidents among different demographic groups.
+
+It is important to keep the potential sources of bias of a dataset in mind, the data may be unintentionally misleading in nuanced ways.

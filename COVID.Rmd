@@ -1,0 +1,59 @@
+```{r}
+library(tidyverse)
+library(readr)
+
+#read data
+confirmed_US     <- data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv")
+deaths_US        <- data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv")
+confirmed_global <- data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv")
+deaths_global    <- data.table::fread("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv")
+
+# remove non-date cols
+confirmed_US     <- confirmed_US[, -c(1:11)]
+deaths_US        <- deaths_US[, -c(1:12)]
+confirmed_global <- confirmed_global[, -c(1:4)]
+deaths_global    <- deaths_global[, -c(1:4)]
+
+# Set the number of breaks to 80 (quadruple the default value of 20)
+num_breaks <- 80
+
+# Create histograms
+hist(colSums(confirmed_US), breaks = num_breaks, main = "Confirmed US Cases")
+hist(colSums(deaths_US), breaks = num_breaks, main = "US Deaths")
+hist(colSums(confirmed_global), breaks = num_breaks, main = "Confirmed Global Cases")
+hist(colSums(deaths_global), breaks = num_breaks, main = "Global Deaths")
+```
+
+These histograms show the distribution of total COVID-19 cases or deaths over time, with each bar representing the number of cases or deaths reported for a particular day. The height of each bar represents the total number of cases or deaths reported on that day, while the width of each bar represents the time period covered by the data (which is about two weeks).
+
+By looking at these histograms, we can see how the number of cases or deaths has changed over time, and identify any patterns or trends in the data. For example, we might be able to see whether there has been a steady increase or decrease in cases or deaths, or whether there have been any sudden spikes or drops in the numbers. The histograms can also help us to compare the situation in different regions or countries, and to track the progress of the pandemic over time.
+
+```{r}
+# Calculate the column sums for each table
+cases_us_sum <- colSums(confirmed_US)
+deaths_us_sum <- colSums(deaths_US)
+cases_global_sum <- colSums(confirmed_global)
+deaths_global_sum <- colSums(deaths_global)
+
+# Combine the sums into a new data frame
+df_sums <- data.frame(cases_us = cases_us_sum, 
+                      deaths_us = deaths_us_sum,
+                      cases_global = cases_global_sum,
+                      deaths_global = deaths_global_sum)
+
+# Create linear model for US table
+model_us <- lm(deaths_us ~ cases_us, data = df_sums)
+summary(model_us)
+```
+The linear regression model predicts the number of deaths in the US based on the number of cases reported. It estimates the relationship between the two variables by fitting a straight line through the data points. The model outputs the intercept and slope of the line, as well as the residual standard error, which measures the difference between the observed and predicted values. The R-squared value indicates the proportion of the variability in the data that is explained by the model. In this case, the high R-squared value of 0.9548 suggests that the model fits the data well and can make accurate predictions.
+```{r}
+# Create linear model for Global table
+model_global <- lm(deaths_global ~ cases_global, data = df_sums)
+summary(model_global)# predict deaths for both US and Global tables using the models
+
+```
+The second model is also a linear regression model that predicts the number of deaths based on the number of cases, but for the global dataset instead of the US dataset. This model is not as good of a fit for the data, as we see an Adjusted R-squared value of 0.8831, which means that the model explains approximately 88.31% of the variation in deaths_global based on the variation in cases_global. This indicates that the model provides a reasonably good fit to the data, but not to the level of the US model.
+
+Bias might be introduced in the dataset in several ways. Sampling bias is likely present because of asymptomatic individuals. We have no way of knowing that these people are infected, so they are very unlikely to be tested. There may be errors in the way the numbers are reported, leading to inconsistencies in the data that do not reflect the real world. 
+
+Bias might also be introduced in the model in a few key ways. The model makes the implicit assumption that deaths in the coronavirus data are caused by coronavirus itself. There may be confounding variables which could reduce the usefulness of this analysis. The dataset only uses data from the US and the world, where "the world' is a vague term that likely samples heavily from certain reigons, and very few times from others. This is not representative of the world, so the model cannot be representative of the world either.
